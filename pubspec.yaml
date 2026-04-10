@@ -1,0 +1,42 @@
+name: textile_erp_mobile
+description: "Textile ERP Mobile App — iOS and Android"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # HTTP
+  dio: ^5.7.0
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Navigation
+  go_router: ^14.6.2
+
+  # Secure storage
+  flutter_secure_storage: ^9.2.2
+
+  # Date formatting
+  intl: ^0.19.0
+
+  # UI extras
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.6.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
