@@ -28,27 +28,26 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
       drawer: const AppDrawer(),
       body: Column(
         children: [
-          // Search + status filter
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: TextField(
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: const InputDecoration(
-                hintText: 'Search by PO number…',
-                prefixIcon: Icon(Icons.search),
+                hintText: 'Search by PO number...',
+                prefixIcon: Icon(Icons.search_rounded, size: 20),
                 isDense: true,
               ),
               onChanged: (v) => setState(() => _filter = _filter.copyWith(search: v, page: 1)),
             ),
           ),
-          // Status chips
           SizedBox(
-            height: 44,
+            height: 48,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
                 _StatusChip(label: 'All', selected: _filter.status == null,
-                    color: Colors.blueGrey,
+                    color: AppColors.textSecondary,
                     onTap: () => setState(() => _filter = _filter.copyWith(status: null, page: 1))),
                 const SizedBox(width: 6),
                 ..._statuses.map((s) => Padding(
@@ -63,31 +62,29 @@ class _OrdersListScreenState extends ConsumerState<OrdersListScreen> {
               ],
             ),
           ),
-
-          // List
           Expanded(
             child: ordersAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error:   (e, _) => Center(child: Text('Error: $e')),
+              error:   (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
               data:    (page) {
                 if (page.data.isEmpty) {
-                  return const Center(child: Text('No orders found'));
+                  return const Center(child: Text('No orders found', style: TextStyle(color: AppColors.textTertiary)));
                 }
                 return RefreshIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.surface,
                   onRefresh: () async => ref.invalidate(ordersProvider(_filter)),
                   child: ListView.builder(
                     itemCount: page.data.length,
                     itemBuilder: (_, i) => _OrderTile(
                       order: page.data[i],
-                      onTap:  () => context.go('/orders/${page.data[i].id}'),
+                      onTap: () => context.go('/orders/${page.data[i].id}'),
                     ),
                   ),
                 );
               },
             ),
           ),
-
-          // Pagination
           _Pager(
             meta: ordersAsync.value?.meta,
             page: _filter.page,
@@ -112,48 +109,55 @@ class _OrderTile extends StatelessWidget {
     final fmt = DateFormat('dd MMM yyyy');
 
     return Card(
-      child: ListTile(
+      child: InkWell(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Row(children: [
-          Text(order.poNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: color.withAlpha(26),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: color.withAlpha(80)),
-            ),
-            child: Text(order.status.replaceAll('_', ' '),
-                style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold)),
-          ),
-        ]),
-        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SizedBox(height: 4),
-          if (order.buyer != null)
-            Text(order.buyer!.name, style: TextStyle(color: Colors.grey.shade700)),
-          const SizedBox(height: 2),
-          Row(children: [
-            Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey.shade500),
-            const SizedBox(width: 4),
-            Text(delivDate != null ? fmt.format(delivDate) : '—',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-            const Spacer(),
-            Text('${order.totalQty} pcs · ${order.totalStyles} styles',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Text(order.poNumber, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(18),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  order.status.replaceAll('_', ' '),
+                  style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            if (order.buyer != null)
+              Text(order.buyer!.name, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            const SizedBox(height: 6),
+            Row(children: [
+              Icon(Icons.calendar_today_outlined, size: 12, color: AppColors.textTertiary),
+              const SizedBox(width: 4),
+              Text(
+                delivDate != null ? fmt.format(delivDate) : '-',
+                style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
+              ),
+              const Spacer(),
+              Text(
+                '${order.totalQty} pcs  ·  ${order.totalStyles} styles',
+                style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
+              ),
+            ]),
           ]),
-        ]),
-        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+        ),
       ),
     );
   }
 }
 
 class _StatusChip extends StatelessWidget {
-  final String   label;
-  final bool     selected;
-  final Color    color;
+  final String label;
+  final bool selected;
+  final Color color;
   final VoidCallback onTap;
   const _StatusChip({required this.label, required this.selected, required this.color, required this.onTap});
 
@@ -162,15 +166,16 @@ class _StatusChip extends StatelessWidget {
     onTap: onTap,
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: selected ? color : color.withAlpha(20),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withAlpha(selected ? 255 : 80)),
+        color: selected ? color.withAlpha(30) : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: selected ? color.withAlpha(80) : AppColors.border),
       ),
       child: Text(label, style: TextStyle(
-          fontSize: 12, color: selected ? Colors.white : color,
-          fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+          fontSize: 11,
+          color: selected ? color : AppColors.textTertiary,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
     ),
   );
 }
@@ -179,20 +184,21 @@ class _Pager extends StatelessWidget {
   final dynamic meta;
   final int page;
   final VoidCallback? onPrev;
-  final VoidCallback  onNext;
+  final VoidCallback onNext;
   const _Pager({this.meta, required this.page, this.onPrev, required this.onNext});
 
   @override
   Widget build(BuildContext context) {
     final total = meta?.total ?? 0;
-    return Padding(
+    return Container(
+      decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border, width: 0.5))),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(children: [
-        IconButton(icon: const Icon(Icons.chevron_left), onPressed: onPrev),
-        Text('Page $page', style: const TextStyle(fontWeight: FontWeight.w600)),
-        if (total > 0) Text(' of $total items',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-        IconButton(icon: const Icon(Icons.chevron_right), onPressed: onNext),
+        IconButton(icon: const Icon(Icons.chevron_left_rounded, size: 22), onPressed: onPrev),
+        Text('Page $page', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: AppColors.textSecondary)),
+        if (total > 0)
+          Text('  of $total', style: const TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+        IconButton(icon: const Icon(Icons.chevron_right_rounded, size: 22), onPressed: onNext),
       ]),
     );
   }

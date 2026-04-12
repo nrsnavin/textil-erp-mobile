@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_theme.dart';
 
 class StatCard extends StatelessWidget {
   final String    title;
@@ -34,22 +35,31 @@ class StatCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: color.withAlpha(26),
-                      borderRadius: BorderRadius.circular(8),
+                      color: color.withAlpha(20),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(icon, color: color, size: 20),
+                    child: Icon(icon, color: color, size: 18),
                   ),
                   const Spacer(),
                   if (subtitle != null)
-                    Text(subtitle!, style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                    Text(subtitle!, style: const TextStyle(color: AppColors.textTertiary, fontSize: 11)),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(value,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text(title,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+              const SizedBox(height: 14),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                title,
+                style: const TextStyle(color: AppColors.textTertiary, fontSize: 12),
+              ),
             ],
           ),
         ),

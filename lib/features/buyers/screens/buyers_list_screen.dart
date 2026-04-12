@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/buyers_provider.dart';
 import '../../../core/models/models.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_drawer.dart';
 
 class BuyersListScreen extends ConsumerStatefulWidget {
@@ -26,25 +27,29 @@ class _BuyersListScreenState extends ConsumerState<BuyersListScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: TextField(
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: const InputDecoration(
-                hintText: 'Search buyers…',
-                prefixIcon: Icon(Icons.search),
+                hintText: 'Search buyers...',
+                prefixIcon: Icon(Icons.search_rounded, size: 20),
                 isDense: true,
               ),
               onChanged: (v) => setState(() { _search = v; _page = 1; }),
             ),
           ),
+          const SizedBox(height: 8),
           Expanded(
             child: buyersAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error:   (e, _) => Center(child: Text('Error: $e')),
+              error:   (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
               data:    (resp) {
                 if (resp.data.isEmpty) {
-                  return const Center(child: Text('No buyers found'));
+                  return const Center(child: Text('No buyers found', style: TextStyle(color: AppColors.textTertiary)));
                 }
                 return RefreshIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.surface,
                   onRefresh: () async => ref.invalidate(buyersProvider(params)),
                   child: ListView.builder(
                     itemCount: resp.data.length,
@@ -54,19 +59,10 @@ class _BuyersListScreenState extends ConsumerState<BuyersListScreen> {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Row(children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: _page > 1 ? () => setState(() => _page--) : null,
-              ),
-              Text('Page $_page'),
-              IconButton(
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () => setState(() => _page++),
-              ),
-            ]),
+          _Pager(
+            page: _page,
+            onPrev: _page > 1 ? () => setState(() => _page--) : null,
+            onNext: () => setState(() => _page++),
           ),
         ],
       ),
@@ -81,42 +77,81 @@ class _BuyerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: const Color(0xFF1F3864).withAlpha(20),
-          child: Text(buyer.name[0].toUpperCase(),
-              style: const TextStyle(color: Color(0xFF1F3864), fontWeight: FontWeight.bold)),
-        ),
-        title: Row(children: [
-          Text(buyer.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-          const Spacer(),
-          if (buyer.segment != null)
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: Colors.blueGrey.withAlpha(26),
-                borderRadius: BorderRadius.circular(4),
+                color: AppColors.accent.withAlpha(20),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Text('Seg ${buyer.segment}',
-                  style: const TextStyle(fontSize: 11, color: Colors.blueGrey)),
+              child: Center(
+                child: Text(
+                  buyer.name[0].toUpperCase(),
+                  style: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700, fontSize: 16),
+                ),
+              ),
             ),
-        ]),
-        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SizedBox(height: 2),
-          Text('${buyer.country} · ${buyer.currency}',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-          if (buyer.email != null)
-            Text(buyer.email!,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-        ]),
-        trailing: Container(
-          width: 10, height: 10,
-          decoration: BoxDecoration(
-            color: buyer.isActive ? Colors.green : Colors.grey,
-            shape: BoxShape.circle,
-          ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(buyer.name, style: const TextStyle(
+                        fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 14)),
+                  ),
+                  if (buyer.segment != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(18),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('Seg ${buyer.segment}',
+                          style: const TextStyle(fontSize: 11, color: AppColors.primary)),
+                    ),
+                ]),
+                const SizedBox(height: 4),
+                Text('${buyer.country}  ·  ${buyer.currency}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                if (buyer.email != null)
+                  Text(buyer.email!,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+              ]),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              width: 8, height: 8,
+              decoration: BoxDecoration(
+                color: buyer.isActive ? AppColors.success : AppColors.textTertiary,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ]),
         ),
       ),
     );
   }
+}
+
+class _Pager extends StatelessWidget {
+  final int page;
+  final VoidCallback? onPrev;
+  final VoidCallback onNext;
+  const _Pager({required this.page, this.onPrev, required this.onNext});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border, width: 0.5))),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+    child: Row(children: [
+      IconButton(icon: const Icon(Icons.chevron_left_rounded, size: 22), onPressed: onPrev),
+      Text('Page $page', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: AppColors.textSecondary)),
+      IconButton(icon: const Icon(Icons.chevron_right_rounded, size: 22), onPressed: onNext),
+    ]),
+  );
 }

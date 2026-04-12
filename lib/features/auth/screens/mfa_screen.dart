@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
+import '../../../core/theme/app_theme.dart';
 
 class MfaScreen extends ConsumerStatefulWidget {
   final String mfaToken;
@@ -24,7 +25,10 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
     if (!mounted) return;
     if (result.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.error!), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(result.error!),
+          backgroundColor: AppColors.error.withAlpha(200),
+        ),
       );
     }
   }
@@ -34,54 +38,73 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
     final isLoading = ref.watch(authStateProvider).isLoading;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1F3864),
+      backgroundColor: AppColors.scaffold,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.white,
       ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    const Icon(Icons.security, size: 48, color: Color(0xFF1F3864)),
-                    const SizedBox(height: 12),
-                    const Text('Two-Factor Authentication',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Enter the verification code sent to your email.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 24),
-                    TextFormField(
-                      controller: _otpCtl,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 28, letterSpacing: 12, fontWeight: FontWeight.bold),
-                      decoration: const InputDecoration(
-                        hintText: '• • • • • •',
-                        counterText: '',
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: isLoading ? null : _verify,
-                      child: isLoading
-                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Verify'),
-                    ),
-                  ],
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border, width: 0.5),
+                  ),
+                  child: const Icon(Icons.shield_outlined, size: 28, color: AppColors.primary),
                 ),
-              ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Two-factor authentication',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Enter the verification code sent to your email',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                ),
+                const SizedBox(height: 36),
+                TextFormField(
+                  controller: _otpCtl,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    letterSpacing: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: '------',
+                    hintStyle: TextStyle(color: AppColors.textTertiary, letterSpacing: 12),
+                    counterText: '',
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: isLoading ? null : _verify,
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Verify'),
+                ),
+              ],
             ),
           ),
         ),

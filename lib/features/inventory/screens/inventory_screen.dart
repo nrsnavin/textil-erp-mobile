@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/inventory_provider.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/models/models.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_drawer.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
@@ -25,12 +26,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         title: const Text('Inventory'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_chart),
+            icon: const Icon(Icons.add_chart_rounded, size: 20),
             tooltip: 'Stock Movement',
             onPressed: () => _showMovementMenu(context),
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded, size: 20),
             onPressed: () => ref.invalidate(stockBalancesProvider),
           ),
         ],
@@ -38,20 +39,19 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       drawer: const AppDrawer(),
       body: Column(
         children: [
-          // Search
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: TextField(
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: const InputDecoration(
-                hintText: 'Search by item name or code…',
-                prefixIcon: Icon(Icons.search),
+                hintText: 'Search by item name or code...',
+                prefixIcon: Icon(Icons.search_rounded, size: 20),
                 isDense: true,
               ),
               onChanged: (v) => setState(() => _search = v.toLowerCase()),
             ),
           ),
-
-          // Table
+          const SizedBox(height: 8),
           Expanded(
             child: stockAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -64,10 +64,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         (s.item?.code.toLowerCase().contains(_search) ?? false)).toList();
 
                 if (filtered.isEmpty) {
-                  return const Center(child: Text('No stock records found'));
+                  return const Center(child: Text('No stock records found', style: TextStyle(color: AppColors.textTertiary)));
                 }
 
                 return RefreshIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.surface,
                   onRefresh: () async => ref.invalidate(stockBalancesProvider),
                   child: ListView.builder(
                     itemCount: filtered.length,
@@ -92,6 +94,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   void _showMovementMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: AppColors.elevated,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (_) => _MovementMenu(onSelected: (type) {
         Navigator.pop(context);
         _showMovementDialog(context, type);
@@ -119,66 +125,73 @@ class _StockTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final avail = balance.available;
-    final availColor = avail > 0 ? const Color(0xFF389E0D) : const Color(0xFFCF1322);
+    final availColor = avail > 0 ? AppColors.success : AppColors.error;
 
     return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1F3864).withAlpha(20),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF1F3864), size: 22),
-        ),
-        title: Text(balance.item?.name ?? balance.itemId,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Row(children: [
-              _chip('Code', balance.item?.code ?? '—', Colors.blueGrey),
-              const SizedBox(width: 6),
-              _chip('Loc', balance.location, Colors.indigo),
-            ]),
-            const SizedBox(height: 4),
-            Row(children: [
-              _statText('On Hand', balance.onHand, Colors.black87),
-              const SizedBox(width: 12),
-              _statText('Reserved', balance.reserved, Colors.orange),
-              const SizedBox(width: 12),
-              _statText('Available', avail, availColor),
-            ]),
-          ],
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.history, color: Color(0xFF2E75B6)),
-          tooltip: 'Movement history',
-          onPressed: onHistoryTap,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFF4ADE80).withAlpha(20),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.inventory_2_outlined, color: Color(0xFF4ADE80), size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(balance.item?.name ?? balance.itemId,
+                    style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 14)),
+                const SizedBox(height: 4),
+                Row(children: [
+                  _chip('Code', balance.item?.code ?? '-'),
+                  const SizedBox(width: 6),
+                  _chip('Loc', balance.location),
+                ]),
+                const SizedBox(height: 8),
+                Row(children: [
+                  _stat('On Hand', balance.onHand, AppColors.textPrimary),
+                  const SizedBox(width: 14),
+                  _stat('Reserved', balance.reserved, AppColors.warning),
+                  const SizedBox(width: 14),
+                  _stat('Available', avail, availColor),
+                ]),
+              ]),
+            ),
+            IconButton(
+              icon: const Icon(Icons.history_rounded, color: AppColors.primary, size: 20),
+              tooltip: 'Movement history',
+              onPressed: onHistoryTap,
+            ),
+          ]),
         ),
       ),
     );
   }
 
-  Widget _chip(String label, String value, Color color) => Container(
+  Widget _chip(String label, String value) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
     decoration: BoxDecoration(
-      color: color.withAlpha(20),
+      color: AppColors.primary.withAlpha(12),
       borderRadius: BorderRadius.circular(4),
     ),
     child: Text('$label: $value',
-        style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+        style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w500)),
   );
 
-  Widget _statText(String label, double value, Color color) =>
-      RichText(text: TextSpan(children: [
-        TextSpan(text: '$label: ', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-        TextSpan(text: value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 2),
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
-      ]));
+  Widget _stat(String label, double value, Color color) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textTertiary)),
+        Text(
+          value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 2),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color),
+        ),
+      ]);
 }
 
 // ── Movement menu ─────────────────────────────────────────────────────────────────
@@ -190,11 +203,11 @@ class _MovementMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      (Icons.add_box_outlined,    'Set Opening Stock',       'opening',  const Color(0xFF1890FF)),
-      (Icons.tune,                'Adjust Stock',            'adjust',   const Color(0xFFFA8C16)),
-      (Icons.outbox_outlined,     'Issue to Production',     'issue',    const Color(0xFFFF4D4F)),
-      (Icons.move_to_inbox,       'Return from Production',  'return',   const Color(0xFF13C2C2)),
-      (Icons.swap_horiz,          'Transfer Between Locations','transfer',const Color(0xFF722ED1)),
+      (Icons.add_box_outlined,    'Set Opening Stock',       'opening',  const Color(0xFF60A5FA)),
+      (Icons.tune_rounded,        'Adjust Stock',            'adjust',   AppColors.warning),
+      (Icons.outbox_outlined,     'Issue to Production',     'issue',    AppColors.error),
+      (Icons.move_to_inbox,       'Return from Production',  'return',   const Color(0xFF2DD4BF)),
+      (Icons.swap_horiz_rounded,  'Transfer Between Locations','transfer',const Color(0xFFA78BFA)),
     ];
 
     return SafeArea(
@@ -203,15 +216,30 @@ class _MovementMenu extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(12),
-              child: Text('Stock Movement', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Container(
+              width: 32, height: 4,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Stock Movement', style: TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.textPrimary)),
+              ),
+            ),
+            const SizedBox(height: 4),
             ...items.map((item) {
               final (icon, label, type, color) = item;
               return ListTile(
-                leading: Icon(icon, color: color),
-                title: Text(label),
+                dense: true,
+                leading: Icon(icon, color: color, size: 22),
+                title: Text(label, style: const TextStyle(
+                    fontSize: 14, color: AppColors.textPrimary)),
                 onTap: () => onSelected(type),
               );
             }),
@@ -291,13 +319,19 @@ class _StockMovementDialogState extends ConsumerState<_StockMovementDialog> {
         Navigator.of(context).pop();
         widget.onDone();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Movement recorded'), backgroundColor: Colors.green),
+          SnackBar(
+            content: const Text('Movement recorded'),
+            backgroundColor: AppColors.success.withAlpha(200),
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(apiError(e)), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(apiError(e)),
+            backgroundColor: AppColors.error.withAlpha(200),
+          ),
         );
       }
     } finally {
@@ -327,7 +361,7 @@ class _StockMovementDialogState extends ConsumerState<_StockMovementDialog> {
             const SizedBox(height: 12),
             _field(
               _qtyCtl,
-              widget.type == 'adjust' ? 'Qty (±)' : 'Quantity',
+              widget.type == 'adjust' ? 'Qty (+/-)' : 'Quantity',
               keyboard: TextInputType.numberWithOptions(signed: widget.type == 'adjust', decimal: true),
               required: true,
             ),
@@ -343,9 +377,11 @@ class _StockMovementDialogState extends ConsumerState<_StockMovementDialog> {
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        ElevatedButton(
+        FilledButton(
           onPressed: _loading ? null : _submit,
-          child: _loading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Confirm'),
+          child: _loading
+              ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Confirm'),
         ),
       ],
     );
@@ -379,11 +415,11 @@ class _ErrorView extends StatelessWidget {
     child: Padding(
       padding: const EdgeInsets.all(24),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+        const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.error),
         const SizedBox(height: 12),
-        Text(message, textAlign: TextAlign.center),
+        Text(message, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
         const SizedBox(height: 16),
-        ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+        FilledButton(onPressed: onRetry, child: const Text('Retry')),
       ]),
     ),
   );

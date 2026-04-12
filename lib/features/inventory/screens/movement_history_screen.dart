@@ -41,8 +41,8 @@ class _MovementHistoryScreenState extends ConsumerState<MovementHistoryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Movement History', style: TextStyle(fontSize: 16)),
-            Text('${widget.itemName} • ${widget.location}',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal)),
+            Text('${widget.itemName}  ·  ${widget.location}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal, color: AppColors.textTertiary)),
           ],
         ),
       ),
@@ -50,10 +50,10 @@ class _MovementHistoryScreenState extends ConsumerState<MovementHistoryScreen> {
         children: [
           // Entry type filter chips
           SizedBox(
-            height: 44,
+            height: 48,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
                 _FilterChip(label: 'All', selected: _entryTypeFilter == null,
                     onTap: () => setState(() { _entryTypeFilter = null; _page = 1; })),
@@ -76,23 +76,24 @@ class _MovementHistoryScreenState extends ConsumerState<MovementHistoryScreen> {
           Expanded(
             child: movementsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error:   (e, _) => Center(child: Text('Error: $e')),
+              error:   (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
               data:    (entries) {
                 if (entries.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.history, size: 48, color: Colors.grey),
-                      SizedBox(height: 8),
-                      Text('No movements recorded yet', style: TextStyle(color: Colors.grey)),
+                      Icon(Icons.history_rounded, size: 48, color: AppColors.textTertiary),
+                      const SizedBox(height: 8),
+                      const Text('No movements recorded yet', style: TextStyle(color: AppColors.textTertiary)),
                     ]),
                   );
                 }
 
                 return RefreshIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.surface,
                   onRefresh: () async => ref.invalidate(movementHistoryProvider(_filter)),
-                  child: ListView.separated(
+                  child: ListView.builder(
                     itemCount: entries.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (_, i) => _MovementTile(entry: entries[i]),
                   ),
                 );
@@ -101,8 +102,11 @@ class _MovementHistoryScreenState extends ConsumerState<MovementHistoryScreen> {
           ),
 
           // Pagination
-          _Pagination(page: _page, onPrev: _page > 1 ? () => setState(() => _page--) : null,
-              onNext: () => setState(() => _page++)),
+          _Pager(
+            page: _page,
+            onPrev: _page > 1 ? () => setState(() => _page--) : null,
+            onNext: () => setState(() => _page++),
+          ),
         ],
       ),
     );
@@ -110,7 +114,7 @@ class _MovementHistoryScreenState extends ConsumerState<MovementHistoryScreen> {
 }
 
 class _MovementTile extends StatelessWidget {
-  final dynamic entry; // StockLedgerEntry
+  final dynamic entry;
   const _MovementTile({required this.entry});
 
   @override
@@ -121,60 +125,74 @@ class _MovementTile extends StatelessWidget {
     final dt     = DateTime.tryParse(entry.createdAt as String? ?? '') ?? DateTime.now();
     final fmt    = DateFormat('dd MMM yy, HH:mm');
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color.withAlpha(26),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          isIn ? Icons.add_circle_outline : Icons.remove_circle_outline,
-          color: color,
-          size: 22,
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withAlpha(18),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                isIn ? Icons.add_circle_outline : Icons.remove_circle_outline,
+                color: color,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color.withAlpha(18),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      ledgerEntryLabel(entry.entryType as String),
+                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${isIn ? '+' : ''}${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 2)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: isIn ? AppColors.success : AppColors.error,
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 6),
+                Row(children: [
+                  Text('Balance: ', style: const TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+                  Text(
+                    (entry.balanceQty as double).toStringAsFixed(0),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  ),
+                  if (entry.refType != null) ...[
+                    const SizedBox(width: 8),
+                    Text('${entry.refType}', style: const TextStyle(fontSize: 11, color: AppColors.primary)),
+                  ],
+                ]),
+                if (entry.remarks != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(entry.remarks as String,
+                        style: const TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+                  ),
+                Text(fmt.format(dt), style: const TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+              ]),
+            ),
+          ]),
         ),
       ),
-      title: Row(children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: color.withAlpha(26),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            ledgerEntryLabel(entry.entryType as String),
-            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold),
-          ),
-        ),
-        const Spacer(),
-        Text(
-          '${isIn ? '+' : ''}${qty.toStringAsFixed(qty.truncateToDouble() == qty ? 0 : 2)}',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isIn ? const Color(0xFF389E0D) : const Color(0xFFCF1322),
-          ),
-        ),
-      ]),
-      subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const SizedBox(height: 2),
-        Row(children: [
-          Text('Balance: ', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-          Text(
-            (entry.balanceQty as double).toStringAsFixed(0),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-          ),
-          if (entry.refType != null) ...[
-            const SizedBox(width: 8),
-            Text('${entry.refType}', style: const TextStyle(fontSize: 11, color: Colors.blueGrey)),
-          ],
-        ]),
-        if (entry.remarks != null)
-          Text(entry.remarks as String,
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
-        Text(fmt.format(dt), style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
-      ]),
     );
   }
 }
@@ -189,42 +207,43 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? const Color(0xFF1F3864);
+    final c = color ?? AppColors.textSecondary;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: selected ? c : c.withAlpha(20),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: c.withAlpha(selected ? 255 : 80)),
+          color: selected ? c.withAlpha(30) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: selected ? c.withAlpha(80) : AppColors.border),
         ),
         child: Text(label,
             style: TextStyle(
-              fontSize: 12,
-              color: selected ? Colors.white : c,
-              fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+              fontSize: 11,
+              color: selected ? c : AppColors.textTertiary,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
             )),
       ),
     );
   }
 }
 
-class _Pagination extends StatelessWidget {
+class _Pager extends StatelessWidget {
   final int page;
   final VoidCallback? onPrev;
   final VoidCallback  onNext;
 
-  const _Pagination({required this.page, this.onPrev, required this.onNext});
+  const _Pager({required this.page, this.onPrev, required this.onNext});
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+  Widget build(BuildContext context) => Container(
+    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border, width: 0.5))),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
     child: Row(children: [
-      IconButton(icon: const Icon(Icons.chevron_left), onPressed: onPrev),
-      Text('Page $page', style: const TextStyle(fontWeight: FontWeight.w600)),
-      IconButton(icon: const Icon(Icons.chevron_right), onPressed: onNext),
+      IconButton(icon: const Icon(Icons.chevron_left_rounded, size: 22), onPressed: onPrev),
+      Text('Page $page', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: AppColors.textSecondary)),
+      IconButton(icon: const Icon(Icons.chevron_right_rounded, size: 22), onPressed: onNext),
     ]),
   );
 }

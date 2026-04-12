@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../providers/grn_provider.dart';
 import '../../../core/models/models.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/app_drawer.dart';
 
 class GrnListScreen extends ConsumerStatefulWidget {
@@ -28,26 +29,27 @@ class _GrnListScreenState extends ConsumerState<GrnListScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: TextField(
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
               decoration: const InputDecoration(
-                hintText: 'Search GRN number…',
-                prefixIcon: Icon(Icons.search),
+                hintText: 'Search GRN number...',
+                prefixIcon: Icon(Icons.search_rounded, size: 20),
                 isDense: true,
               ),
               onChanged: (v) => setState(() => _filter = _filter.copyWith(search: v, page: 1)),
             ),
           ),
           SizedBox(
-            height: 44,
+            height: 48,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
                 _StatusChip(
                   label: 'All',
                   selected: _filter.status == null,
-                  color: Colors.blueGrey,
+                  color: AppColors.textSecondary,
                   onTap: () => setState(() => _filter = _filter.copyWith(status: null, page: 1)),
                 ),
                 const SizedBox(width: 6),
@@ -56,7 +58,7 @@ class _GrnListScreenState extends ConsumerState<GrnListScreen> {
                   child: _StatusChip(
                     label: s,
                     selected: _filter.status == s,
-                    color: s == 'POSTED' ? Colors.green : Colors.orange,
+                    color: s == 'POSTED' ? AppColors.success : AppColors.warning,
                     onTap: () => setState(() => _filter = _filter.copyWith(status: s, page: 1)),
                   ),
                 )),
@@ -66,12 +68,14 @@ class _GrnListScreenState extends ConsumerState<GrnListScreen> {
           Expanded(
             child: grnsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error:   (e, _) => Center(child: Text('Error: $e')),
+              error:   (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
               data:    (page) {
                 if (page.data.isEmpty) {
-                  return const Center(child: Text('No GRNs found'));
+                  return const Center(child: Text('No GRNs found', style: TextStyle(color: AppColors.textTertiary)));
                 }
                 return RefreshIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.surface,
                   onRefresh: () async => ref.invalidate(grnsProvider(_filter)),
                   child: ListView.builder(
                     itemCount: page.data.length,
@@ -84,21 +88,12 @@ class _GrnListScreenState extends ConsumerState<GrnListScreen> {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Row(children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: _filter.page > 1
-                    ? () => setState(() => _filter = _filter.copyWith(page: _filter.page - 1))
-                    : null,
-              ),
-              Text('Page ${_filter.page}', style: const TextStyle(fontWeight: FontWeight.w600)),
-              IconButton(
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () => setState(() => _filter = _filter.copyWith(page: _filter.page + 1)),
-              ),
-            ]),
+          _Pager(
+            page: _filter.page,
+            onPrev: _filter.page > 1
+                ? () => setState(() => _filter = _filter.copyWith(page: _filter.page - 1))
+                : null,
+            onNext: () => setState(() => _filter = _filter.copyWith(page: _filter.page + 1)),
           ),
         ],
       ),
@@ -114,44 +109,46 @@ class _GrnTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPosted = grn.status == 'POSTED';
-    final statusColor = isPosted ? Colors.green : Colors.orange;
+    final statusColor = isPosted ? AppColors.success : AppColors.warning;
     final fmt = DateFormat('dd MMM yyyy');
     final receivedDate = DateTime.tryParse(grn.grnDate);
 
     return Card(
-      child: ListTile(
+      child: InkWell(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Row(children: [
-          Text(grn.grnNumber, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: statusColor.withAlpha(26),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: statusColor.withAlpha(80)),
-            ),
-            child: Text(grn.status,
-                style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.bold)),
-          ),
-        ]),
-        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const SizedBox(height: 4),
-          if (grn.supplier != null)
-            Text(grn.supplier!.name, style: TextStyle(color: Colors.grey.shade700)),
-          const SizedBox(height: 2),
-          Row(children: [
-            Icon(Icons.calendar_today_outlined, size: 12, color: Colors.grey.shade500),
-            const SizedBox(width: 4),
-            Text(receivedDate != null ? fmt.format(receivedDate) : '—',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-            const Spacer(),
-            Text('${grn.lines.length} line${grn.lines.length == 1 ? '' : 's'}',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Text(grn.grnNumber, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withAlpha(18),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(grn.status,
+                    style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w600)),
+              ),
+            ]),
+            if (grn.supplier != null) ...[
+              const SizedBox(height: 8),
+              Text(grn.supplier!.name, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            ],
+            const SizedBox(height: 6),
+            Row(children: [
+              Icon(Icons.calendar_today_outlined, size: 12, color: AppColors.textTertiary),
+              const SizedBox(width: 4),
+              Text(receivedDate != null ? fmt.format(receivedDate) : '-',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+              const Spacer(),
+              Text('${grn.lines.length} line${grn.lines.length == 1 ? '' : 's'}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+            ]),
           ]),
-        ]),
-        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+        ),
       ),
     );
   }
@@ -169,16 +166,34 @@ class _StatusChip extends StatelessWidget {
     onTap: onTap,
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: selected ? color : color.withAlpha(20),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withAlpha(selected ? 255 : 80)),
+        color: selected ? color.withAlpha(30) : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: selected ? color.withAlpha(80) : AppColors.border),
       ),
       child: Text(label, style: TextStyle(
-          fontSize: 12,
-          color: selected ? Colors.white : color,
-          fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+          fontSize: 11,
+          color: selected ? color : AppColors.textTertiary,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
     ),
+  );
+}
+
+class _Pager extends StatelessWidget {
+  final int page;
+  final VoidCallback? onPrev;
+  final VoidCallback onNext;
+  const _Pager({required this.page, this.onPrev, required this.onNext});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.border, width: 0.5))),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+    child: Row(children: [
+      IconButton(icon: const Icon(Icons.chevron_left_rounded, size: 22), onPressed: onPrev),
+      Text('Page $page', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: AppColors.textSecondary)),
+      IconButton(icon: const Icon(Icons.chevron_right_rounded, size: 22), onPressed: onNext),
+    ]),
   );
 }

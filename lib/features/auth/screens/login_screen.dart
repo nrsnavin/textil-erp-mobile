@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../../../core/theme/app_theme.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -37,10 +38,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       context.go('/mfa', extra: result.mfaToken);
     } else if (result.error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.error!), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(result.error!),
+          backgroundColor: AppColors.error.withAlpha(200),
+        ),
       );
     }
-    // success → GoRouter redirect handles navigation
   }
 
   @override
@@ -48,99 +51,112 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isLoading = ref.watch(authStateProvider).isLoading;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1F3864),
+      backgroundColor: AppColors.scaffold,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 28),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo / header
+                const SizedBox(height: 40),
+
+                // Logo
                 Container(
-                  width: 80,
-                  height: 80,
+                  width: 64,
+                  height: 64,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.factory_rounded, size: 48, color: Color(0xFF1F3864)),
+                  child: const Icon(Icons.factory_rounded, size: 32, color: Colors.white),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 const Text(
                   'Textile ERP',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
                   ),
                 ),
+                const SizedBox(height: 4),
                 const Text(
                   'Enterprise Manufacturing Platform',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                  style: TextStyle(color: AppColors.textTertiary, fontSize: 13, letterSpacing: 0.3),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 48),
 
-                // Form card
-                Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 8,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Form(
-                      key: _form,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'Sign In',
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 20),
-                          TextFormField(
-                            controller: _emailCtl,
-                            keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.email_outlined),
-                            ),
-                            validator: (v) =>
-                                v == null || !v.contains('@') ? 'Enter a valid email' : null,
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _passCtl,
-                            obscureText: _obscure,
-                            decoration: InputDecoration(
-                              labelText: 'Password',
-                              prefixIcon: const Icon(Icons.lock_outline),
-                              suffixIcon: IconButton(
-                                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-                                onPressed: () => setState(() => _obscure = !_obscure),
-                              ),
-                            ),
-                            validator: (v) =>
-                                v == null || v.isEmpty ? 'Enter your password' : null,
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton(
-                            onPressed: isLoading ? null : _submit,
-                            child: isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Text('Sign In', style: TextStyle(fontSize: 16)),
-                          ),
-                        ],
+                // Form
+                Form(
+                  key: _form,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Sign in',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.3,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Enter your credentials to continue',
+                        style: TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                      ),
+                      const SizedBox(height: 28),
+                      TextFormField(
+                        controller: _emailCtl,
+                        keyboardType: TextInputType.emailAddress,
+                        style: const TextStyle(color: AppColors.textPrimary),
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          prefixIcon: Icon(Icons.mail_outline_rounded, size: 20),
+                        ),
+                        validator: (v) =>
+                            v == null || !v.contains('@') ? 'Enter a valid email' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _passCtl,
+                        obscureText: _obscure,
+                        style: const TextStyle(color: AppColors.textPrimary),
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(() => _obscure = !_obscure),
+                          ),
+                        ),
+                        validator: (v) =>
+                            v == null || v.isEmpty ? 'Enter your password' : null,
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: isLoading ? null : _submit,
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('Continue'),
+                      ),
+                    ],
                   ),
                 ),
+                const SizedBox(height: 40),
               ],
             ),
           ),

@@ -16,7 +16,7 @@ class OrderDetailScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Order Details')),
       body: orderAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error:   (e, _) => Center(child: Text('Error: $e')),
+        error:   (e, _) => Center(child: Text('Error: $e', style: const TextStyle(color: AppColors.error))),
         data:    (order) {
           final color = orderStatusColor(order.status);
           final delivDate = DateTime.tryParse(order.deliveryDate);
@@ -25,46 +25,56 @@ class OrderDetailScreen extends ConsumerWidget {
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // Header card
+              // Header
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Text(order.poNumber,
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      Text(order.poNumber, style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: -0.3)),
                       const Spacer(),
-                      _Badge(label: order.status.replaceAll('_', ' '), color: color),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withAlpha(18),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(order.status.replaceAll('_', ' '),
+                            style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
+                      ),
                     ]),
                     if (order.buyer != null) ...[
-                      const SizedBox(height: 6),
-                      Text(order.buyer!.name,
-                          style: TextStyle(color: Colors.grey.shade700, fontSize: 15)),
-                      Text('${order.buyer!.country} · ${order.buyer!.currency}',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                      const SizedBox(height: 10),
+                      Text(order.buyer!.name, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+                      Text('${order.buyer!.country}  ·  ${order.buyer!.currency}',
+                          style: const TextStyle(color: AppColors.textTertiary, fontSize: 13)),
                     ],
                   ]),
                 ),
               ),
 
-              // Info rows
+              // Info
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: Column(children: [
-                    _Row('Delivery Date', delivDate != null ? fmt.format(delivDate) : '—'),
-                    _Row('Season',  order.season  ?? '—'),
+                    _Row('Delivery Date', delivDate != null ? fmt.format(delivDate) : '-'),
+                    _Row('Season', order.season ?? '-'),
                     _Row('Total Qty', '${order.totalQty} pcs'),
-                    _Row('Styles',  order.totalStyles.toString()),
+                    _Row('Styles', order.totalStyles.toString()),
                     if (order.remarks != null) _Row('Remarks', order.remarks!),
                   ]),
                 ),
               ),
 
-              // Status timeline
-              const SizedBox(height: 8),
-              const Text('Status Timeline',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              // Timeline
+              const SizedBox(height: 12),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: Text('Status Timeline', style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              ),
               const SizedBox(height: 8),
               _StatusTimeline(currentStatus: order.status),
             ]),
@@ -82,29 +92,12 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4),
+    padding: const EdgeInsets.symmetric(vertical: 6),
     child: Row(children: [
-      Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+      Text(label, style: const TextStyle(color: AppColors.textTertiary, fontSize: 13)),
       const Spacer(),
-      Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+      Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: AppColors.textPrimary)),
     ]),
-  );
-}
-
-class _Badge extends StatelessWidget {
-  final String label;
-  final Color  color;
-  const _Badge({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withAlpha(26),
-      borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: color.withAlpha(80)),
-    ),
-    child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
   );
 }
 
@@ -121,43 +114,43 @@ class _StatusTimeline extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: isCancelled
             ? Row(children: [
-                const Icon(Icons.cancel, color: Colors.red),
-                const SizedBox(width: 8),
-                const Text('Order Cancelled', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                Icon(Icons.cancel_rounded, color: AppColors.error, size: 20),
+                const SizedBox(width: 10),
+                const Text('Order Cancelled', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
               ])
             : Column(
                 children: List.generate(_steps.length, (i) {
                   final done   = i <= currentIdx;
                   final active = i == currentIdx;
-                  final color  = done ? orderStatusColor(_steps[i]) : Colors.grey.shade300;
+                  final color  = done ? orderStatusColor(_steps[i]) : AppColors.border;
 
                   return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Column(children: [
                       Container(
-                        width: 24, height: 24,
+                        width: 22, height: 22,
                         decoration: BoxDecoration(
-                          color: done ? color : Colors.transparent,
+                          color: done ? color.withAlpha(30) : Colors.transparent,
                           shape: BoxShape.circle,
-                          border: Border.all(color: color, width: 2),
+                          border: Border.all(color: color, width: done ? 2 : 1),
                         ),
                         child: done
-                            ? const Icon(Icons.check, size: 14, color: Colors.white)
+                            ? Icon(Icons.check_rounded, size: 12, color: color)
                             : null,
                       ),
                       if (i < _steps.length - 1)
-                        Container(width: 2, height: 24, color: done ? color : Colors.grey.shade200),
+                        Container(width: 1.5, height: 22, color: done ? color.withAlpha(50) : AppColors.border),
                     ]),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         _steps[i].replaceAll('_', ' '),
                         style: TextStyle(
-                          fontWeight: active ? FontWeight.bold : FontWeight.normal,
-                          color: done ? Colors.black87 : Colors.grey,
+                          fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                          color: done ? AppColors.textPrimary : AppColors.textTertiary,
                           fontSize: 13,
                         ),
                       ),
