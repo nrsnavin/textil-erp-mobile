@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/sync/connectivity_monitor.dart';
-import '../../core/sync/sync_engine.dart';
+import '../../core/sync/sync_queue_service.dart';
 import '../../core/sync/sync_provider.dart';
 import '../../core/theme/app_theme.dart';
 

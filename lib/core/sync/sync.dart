@@ -8,16 +8,19 @@
 ///         ▼
 ///   OfflineMutationHelper
 ///    ├── Online? → API call (direct)
-///    └── Offline? → MutationDb.enqueue()
+///    └── Offline? → SyncQueueDao.enqueue()
 ///                         │
 ///                         ▼
 ///                   SQLite queue (WAL mode)
+///                   Priority-ordered (critical > high > normal > low)
 ///                         │
-///                   ┌─────┴─────┐
-///                   │ SyncEngine │ ← ConnectivityMonitor (online event)
-///                   └─────┬─────┘
+///                   ┌─────┴──────────────┐
+///                   │ SyncQueueService    │ ← ConnectivityMonitor (online event)
+///                   │ + BackgroundSync    │ ← Timer (periodic 15m)
+///                   └─────┬──────────────┘
 ///                         │
-///              MutationDb.claimBatch() ← Atomic transaction
+///              SyncQueueDao.claimBatch() ← Atomic transaction
+///              (respects backoff window)
 ///                         │
 ///                  ┌──────┴───────┐
 ///                  │ Isolate.run()│ ← Network I/O off main thread
@@ -34,7 +37,14 @@
 ///           │             │             │
 ///      "applied"    "duplicate"     "error"
 ///      markSynced   markSynced   markFailed
-///      (delete)     (delete)     (retry later)
+///      (delete)     (delete)     (exp backoff)
+///                                  │
+///                            retry_count++
+///                            next_retry_at = now + 2^n * 2s
+///                                  │
+///                            ┌─────┴──────┐
+///                            │ max retries │ → dead letter queue
+///                            └────────────┘
 /// ```
 ///
 /// ## Concurrency safety
@@ -44,10 +54,21 @@
 /// 3. **Crash recovery**: On startup, stuck "syncing" → "pending"
 /// 4. **Server idempotency**: clientId UUID prevents server-side duplicates
 /// 5. **Debounced connectivity**: 1.5s debounce on network transitions
+/// 6. **Backoff-aware claims**: Only picks up mutations past their retry window
+///
+/// ## Data caching (NetworkAwareRepository)
+///
+/// ```
+///   NetworkAwareRepository.fetch()
+///    ├── networkFirst:  API → cache on failure
+///    ├── cacheFirst:    cache if fresh → API if stale
+///    ├── staleWhileRevalidate: return cache → refresh background
+///    ├── networkOnly:   API only
+///    └── cacheOnly:     SQLite only (offline)
+/// ```
 library;
 
-export 'mutation.dart';
-export 'mutation_db.dart';
 export 'connectivity_monitor.dart';
-export 'sync_engine.dart';
+export 'sync_queue_service.dart';
+export 'background_sync.dart';
 export 'sync_provider.dart';

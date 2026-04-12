@@ -3,47 +3,76 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../api/api_client.dart';
+import '../database/app_database.dart';
+import '../database/daos/sync_queue_dao.dart';
+import '../repository/orders_repository.dart';
+import '../repository/inventory_repository.dart';
 import '../storage/secure_storage.dart';
 import 'connectivity_monitor.dart';
-import 'mutation.dart';
-import 'mutation_db.dart';
-import 'sync_engine.dart';
+import 'sync_queue_service.dart';
+import 'background_sync.dart';
+
+// Re-export for backward compatibility
+export 'sync_queue_service.dart' show SyncStatus, SyncPhase;
 
 const _uuid = Uuid();
 const _defaultBaseUrl = 'http://10.0.2.2:3008';
 
-// ── Mutation DB provider ──────────────────────────────────────────────────
+// ── Database provider ───────────────────────────────────────────────────
 
-final mutationDbProvider = Provider<MutationDb>((ref) {
-  return MutationDb.instance;
+final appDatabaseProvider = Provider<AppDatabase>((ref) {
+  return AppDatabase.instance;
 });
 
-// ── Sync Engine provider ──────────────────────────────────────────────────
+// ── Legacy MutationDb provider (backward compat) ────────────────────────
 
-final syncEngineProvider = Provider<SyncEngine>((ref) {
-  final db = ref.watch(mutationDbProvider);
+final mutationDbProvider = Provider<AppDatabase>((ref) {
+  return ref.watch(appDatabaseProvider);
+});
+
+// ── Sync Queue Service provider ─────────────────────────────────────────
+
+final syncQueueServiceProvider = Provider<SyncQueueService>((ref) {
+  final db = ref.watch(appDatabaseProvider);
   final connectivity = ref.watch(connectivityMonitorProvider);
   final storage = ref.watch(secureStorageProvider);
 
-  final engine = SyncEngine(
-    db: db,
+  final service = SyncQueueService(
+    dao: db.syncQueue,
     connectivity: connectivity,
     getBaseUrl: () => _defaultBaseUrl,
     getAccessToken: () => storage.getAccessToken(),
   );
 
-  ref.onDispose(() => engine.dispose());
-  return engine;
+  ref.onDispose(() => service.dispose());
+  return service;
 });
 
-// ── Sync Status stream provider ───────────────────────────────────────────
+// Legacy alias
+final syncEngineProvider = Provider<SyncQueueService>((ref) {
+  return ref.watch(syncQueueServiceProvider);
+});
+
+// ── Background sync scheduler ───────────────────────────────────────────
+
+final backgroundSyncProvider = Provider<BackgroundSyncScheduler>((ref) {
+  final service = ref.watch(syncQueueServiceProvider);
+
+  final scheduler = BackgroundSyncScheduler(
+    config: const BackgroundSyncConfig(),
+    onSync: () => service.flush(),
+  );
+
+  ref.onDispose(() => scheduler.dispose());
+  return scheduler;
+});
+
+// ── Sync Status stream ──────────────────────────────────────────────────
 
 final syncStatusProvider = StreamProvider<SyncStatus>((ref) {
-  final engine = ref.watch(syncEngineProvider);
-  return engine.statusStream;
+  final service = ref.watch(syncQueueServiceProvider);
+  return service.statusStream;
 });
-
-// ── Current sync status (synchronous snapshot) ────────────────────────────
 
 final currentSyncStatusProvider = Provider<SyncStatus>((ref) {
   final asyncStatus = ref.watch(syncStatusProvider);
@@ -54,66 +83,62 @@ final currentSyncStatusProvider = Provider<SyncStatus>((ref) {
   );
 });
 
-// ── Pending count provider (for badge counts) ─────────────────────────────
-
 final pendingMutationCountProvider = Provider<int>((ref) {
   final status = ref.watch(currentSyncStatusProvider);
   return status.pendingCount + status.syncingCount;
 });
 
-// ── Offline mutation helper ───────────────────────────────────────────────
+// ── Offline mutation helper ─────────────────────────────────────────────
 
 /// Helper class that wraps API calls with offline support.
-/// When online, it calls the API directly. When offline, it enqueues
-/// the mutation for later sync and returns immediately.
+/// When online, calls the API directly. When offline, enqueues
+/// the mutation for later sync.
 class OfflineMutationHelper {
   final ApiClient _api;
-  final SyncEngine _syncEngine;
+  final SyncQueueService _syncService;
   final ConnectivityMonitor _connectivity;
 
   OfflineMutationHelper({
     required ApiClient api,
-    required SyncEngine syncEngine,
+    required SyncQueueService syncService,
     required ConnectivityMonitor connectivity,
   })  : _api = api,
-        _syncEngine = syncEngine,
+        _syncService = syncService,
         _connectivity = connectivity;
 
-  /// Execute a mutation. If online, call the API directly.
-  /// If offline, enqueue for later sync.
+  /// Execute a mutation. If online, calls the API directly.
+  /// If offline, enqueues for later sync.
   ///
   /// Returns the API response data if online, or null if queued.
   Future<Map<String, dynamic>?> mutate({
     required String endpoint,
     required String method,
     Map<String, dynamic>? body,
+    SyncPriority priority = SyncPriority.normal,
   }) async {
-    final clientId = _uuid.v4();
-
     if (_connectivity.isOnline) {
       try {
-        // Try the direct API call first
         final response = await _callApi(endpoint, method, body);
         return response;
       } catch (e) {
-        // If the API call fails (network glitch), enqueue for retry
-        await _syncEngine.enqueue(Mutation(
-          clientId: clientId,
+        // API call failed — enqueue for retry
+        await _syncService.enqueue(
           endpoint: endpoint,
           method: method,
           body: body,
-        ));
+          priority: priority,
+        );
         return null;
       }
     }
 
     // Offline: enqueue the mutation
-    await _syncEngine.enqueue(Mutation(
-      clientId: clientId,
+    await _syncService.enqueue(
       endpoint: endpoint,
       method: method,
       body: body,
-    ));
+      priority: priority,
+    );
     return null;
   }
 
@@ -136,7 +161,25 @@ class OfflineMutationHelper {
 final offlineMutationHelperProvider = Provider<OfflineMutationHelper>((ref) {
   return OfflineMutationHelper(
     api: ref.watch(apiClientProvider),
-    syncEngine: ref.watch(syncEngineProvider),
+    syncService: ref.watch(syncQueueServiceProvider),
+    connectivity: ref.watch(connectivityMonitorProvider),
+  );
+});
+
+// ── Repository providers ────────────────────────────────────────────────
+
+final ordersRepositoryProvider = Provider<OrdersRepository>((ref) {
+  return OrdersRepository(
+    api: ref.watch(apiClientProvider),
+    dao: ref.watch(appDatabaseProvider).orders,
+    connectivity: ref.watch(connectivityMonitorProvider),
+  );
+});
+
+final inventoryRepositoryProvider = Provider<InventoryRepository>((ref) {
+  return InventoryRepository(
+    api: ref.watch(apiClientProvider),
+    dao: ref.watch(appDatabaseProvider).inventory,
     connectivity: ref.watch(connectivityMonitorProvider),
   );
 });
