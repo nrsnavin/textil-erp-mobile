@@ -5,12 +5,35 @@ import '../providers/dashboard_provider.dart';
 import '../../../features/auth/providers/auth_provider.dart';
 import '../../../shared/widgets/app_drawer.dart';
 import '../../../shared/widgets/stat_card.dart';
+import '../../../shared/widgets/sync_status_bar.dart';
+import '../../../core/sync/sync_provider.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _syncInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize sync engine once when the dashboard first loads
+    // (user is authenticated at this point)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_syncInitialized) {
+        ref.read(syncEngineProvider).initialize();
+        _syncInitialized = true;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final auth  = ref.watch(authStateProvider).value;
     final stats = ref.watch(dashboardStatsProvider);
 
@@ -25,7 +48,9 @@ class DashboardScreen extends ConsumerWidget {
         ],
       ),
       drawer: const AppDrawer(),
-      body: RefreshIndicator(
+      body: Column(children: [
+        const SyncStatusBar(),
+        Expanded(child: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dashboardStatsProvider),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -131,7 +156,8 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
-      ),
+      )),
+      ]),
     );
   }
 }
